@@ -79,7 +79,9 @@
             </button>
           </form>
 
-          <div class="register-link">还没有账号？ <a href="#">立即注册</a></div>
+          <div class="register-link">
+            还没有账号？ <a href="/register">立即注册</a>
+          </div>
         </div>
       </div>
     </div>
@@ -172,9 +174,6 @@ const onSubmit = async () => {
         lastName: res.lastName,
       }),
     );
-
-    // 提示并跳转（这里可以替换成你项目里的 Toast 组件）
-    alert("登录成功！");
     // 获取用户信息
     const userInfo = await getUserInfoApi();
     console.log("用户信息:", userInfo);

@@ -30,6 +30,7 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-vue": "^8.0.3",
+    "naive-ui": "^2.44.1",
     "prettier": "^2.4.1",
     "typescript": "~5.3.3"
   },

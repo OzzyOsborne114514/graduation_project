@@ -41,8 +41,26 @@ export interface UserInfo {
   firstName: string;
   lastName: string;
   telephone: string;
+  photo: any;
 }
 
+/**
+ * 获取用户信息接口
+ */
 export const getUserInfoApi = () => {
-  return http.get<UserInfo>('/user/info');
+  return http.get<UserInfo>('/user/getCurrentUserData');
+}
+
+export interface RegisterParams {
+  name: string;
+  telephone: string;
+  password: string;
+  gender: string;
+}
+
+/**
+ * 注册接口
+ */
+export const registerApi = (data: RegisterParams) => {
+  return http.post<UserInfo>('/user/register', data);
 }

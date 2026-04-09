@@ -2,10 +2,10 @@
   <div class="modal-overlay" v-if="modelValue" @click.self="closeModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>创建或加入域</h3>
+        <h3>创建或加入领域</h3>
         <button class="close-btn" @click="closeModal">✕</button>
       </div>
-      
+
       <div class="modal-body">
         <!-- 创建域选项 -->
         <div class="action-card" @click="handleCreateDomain">
@@ -14,7 +14,7 @@
           </div>
           <div class="action-info">
             <h4>创建</h4>
-            <p>自己创建一个域并邀请玩伴加入</p>
+            <p>自己创建一个领域并邀请玩伴加入</p>
           </div>
         </div>
 
@@ -25,10 +25,14 @@
           </div>
           <div class="action-info">
             <h4>加入</h4>
-            <p>输入域 ID/邀请链接进行搜索</p>
+            <p>输入领域 ID/邀请链接进行搜索</p>
           </div>
           <div class="search-input-wrapper">
-            <input type="text" placeholder="请输入域ID/邀请链接" v-model="searchKeyword" />
+            <input
+              type="text"
+              placeholder="请输入领域ID/邀请链接"
+              v-model="searchKeyword"
+            />
             <button class="search-btn" @click="handleSearchDomain">
               <i class="icon-search-gray"></i>
             </button>
@@ -58,18 +62,18 @@ const closeModal = () => {
 
 // 处理创建域点击
 const handleCreateDomain = () => {
-  console.log("点击了创建域");
-  // TODO: 实现创建域逻辑
+  console.log("点击了创建领域");
+  // TODO: 实现创建领域逻辑
 };
 
 // 处理搜索/加入域点击
 const handleSearchDomain = () => {
   if (!searchKeyword.value.trim()) {
-    alert("请输入域 ID 或邀请链接");
+    alert("请输入领域 ID 或邀请链接");
     return;
   }
-  console.log("搜索加入域:", searchKeyword.value);
-  // TODO: 实现搜索加入域逻辑
+  console.log("搜索加入领域:", searchKeyword.value);
+  // TODO: 实现搜索加入领域逻辑
 };
 </script>
 
