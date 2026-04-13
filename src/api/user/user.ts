@@ -60,6 +60,7 @@ export interface RegisterParams {
 
 /**
  * 注册接口
+ * @param data 注册参数
  */
 export const registerApi = (data: RegisterParams) => {
   return http.post<UserInfo>('/user/register', data);

@@ -41,46 +41,66 @@
           <h1 class="title">知岛</h1>
           <p class="subtitle">欢迎回来，探索知识的岛屿</p>
 
-          <form class="login-form" @submit.prevent="onSubmit">
-            <div class="input-group">
-              <input
-                type="text"
-                id="telephone"
-                required
-                v-model="form.telephone"
-                autocomplete="off"
-              />
-              <label for="telephone">手机号</label>
-              <!-- <i class="input-icon">👤</i> -->
-            </div>
+          <n-grid :cols="1" :x-gap="0" :y-gap="20">
+            <n-gi>
+              <div class="form-item">
+                <div class="form-label">手机号</div>
+                <n-input
+                  v-model:value="form.telephone"
+                  placeholder="请输入手机号"
+                  size="large"
+                  clearable
+                  @blur="validateTelephone"
+                />
+                <div v-if="errors.telephone" class="error-text">
+                  {{ errors.telephone }}
+                </div>
+              </div>
+            </n-gi>
 
-            <div class="input-group">
-              <input
-                type="password"
-                id="password"
-                required
-                v-model="form.password"
-                autocomplete="off"
-              />
-              <label for="password">密码</label>
-              <!-- <i class="input-icon">🔒</i> -->
-            </div>
+            <n-gi>
+              <div class="form-item">
+                <div class="form-label">密码</div>
+                <n-input
+                  v-model:value="form.password"
+                  type="password"
+                  placeholder="请输入密码"
+                  size="large"
+                  show-password-on="mousedown"
+                  @blur="validatePassword"
+                />
+                <div v-if="errors.password" class="error-text">
+                  {{ errors.password }}
+                </div>
+              </div>
+            </n-gi>
 
-            <div class="options">
-              <label class="remember">
-                <input type="checkbox" v-model="form.rememberMe" />
-                <span>记住我</span>
-              </label>
-              <a href="#" class="forgot">忘记密码？</a>
-            </div>
+            <n-gi>
+              <div class="options">
+                <n-checkbox v-model:checked="form.rememberMe"
+                  >记住我</n-checkbox
+                >
+                <a href="#" class="forgot">忘记密码？</a>
+              </div>
+            </n-gi>
 
-            <button type="submit" class="submit-btn" :disabled="isLoading">
-              {{ isLoading ? "登录中..." : "登 录" }}
-            </button>
-          </form>
+            <n-gi>
+              <n-button
+                type="primary"
+                size="large"
+                :loading="isLoading"
+                :disabled="isLoading"
+                @click="onSubmit"
+                block
+                strong
+              >
+                登 录
+              </n-button>
+            </n-gi>
+          </n-grid>
 
           <div class="register-link">
-            还没有账号？ <a href="/register">立即注册</a>
+            还没有账号？ <router-link to="/register">立即注册</router-link>
           </div>
         </div>
       </div>
@@ -91,64 +111,87 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from "vue";
 import { useRouter } from "vue-router";
+import { NInput, NButton, NCheckbox, NGrid, NGi, useMessage } from "naive-ui";
 import Grainient from "../component/Grainient/Grainient.vue";
 import { loginApi, LoginParams, getUserInfoApi } from "@/api/user/user";
 import { useUserStore } from "@/store/userStore";
 
 const router = useRouter();
+const message = useMessage();
 const userStore = useUserStore();
 
-const form = reactive<LoginParams>({
+const form = reactive<LoginParams & { rememberMe: boolean }>({
   telephone: "",
   password: "",
   rememberMe: false,
 });
 
-const isLoading = ref(false);
+const errors = reactive({
+  telephone: "",
+  password: "",
+});
 
+const isLoading = ref(false);
 const cardRef = ref<HTMLElement | null>(null);
-const mouseX = ref(0);
-const mouseY = ref(0);
-const isHovering = ref(false);
+
+// 3D 卡片倾斜效果
+const rotateX = ref(0);
+const rotateY = ref(0);
+
+const cardStyle = computed(() => ({
+  transform: `perspective(1000px) rotateX(${rotateX.value}deg) rotateY(${rotateY.value}deg)`,
+  transition: "transform 0.1s ease",
+}));
 
 const onMouseMove = (e: MouseEvent) => {
   if (!cardRef.value) return;
   const rect = cardRef.value.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
-
-  // 计算旋转角度（最大倾斜 10 度）
-  mouseX.value = (x / rect.width - 0.5) * 20;
-  mouseY.value = (y / rect.height - 0.5) * -20;
-  isHovering.value = true;
+  const centerX = rect.width / 2;
+  const centerY = rect.height / 2;
+  rotateY.value = ((x - centerX) / centerX) * 5;
+  rotateX.value = ((centerY - y) / centerY) * 5;
 };
 
 const onMouseLeave = () => {
-  mouseX.value = 0;
-  mouseY.value = 0;
-  isHovering.value = false;
+  rotateX.value = 0;
+  rotateY.value = 0;
 };
 
-const cardStyle = computed(() => {
-  if (!isHovering.value) {
-    return {
-      transform:
-        "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)",
-      transition: "transform 0.5s ease",
-    };
+// 单个字段验证方法
+const validateTelephone = () => {
+  if (!form.telephone) {
+    errors.telephone = "请输入手机号";
+  } else if (!/^1[3-9]\d{9}$/.test(form.telephone)) {
+    errors.telephone = "请输入正确的手机号";
+  } else {
+    errors.telephone = "";
   }
-  return {
-    transform: `perspective(1000px) rotateX(${mouseY.value}deg) rotateY(${mouseX.value}deg) scale3d(1.02, 1.02, 1.02)`,
-    transition: "transform 0.1s ease",
-  };
-});
+};
+
+const validatePassword = () => {
+  if (!form.password) {
+    errors.password = "请输入密码";
+  } else if (form.password.length < 6 || form.password.length > 20) {
+    errors.password = "密码长度应为 6-20 个字符";
+  } else {
+    errors.password = "";
+  }
+};
+
+// 手动验证表单（提交时调用）
+const validateForm = (): boolean => {
+  validateTelephone();
+  validatePassword();
+  return !errors.telephone && !errors.password;
+};
 
 const onSubmit = async () => {
-  // 如果正在加载中，直接返回，防止重复点击
   if (isLoading.value) return;
 
-  if (!form.telephone || !form.password) {
-    alert("请输入手机号和密码");
+  if (!validateForm()) {
+    message.error("请检查表单填写是否正确");
     return;
   }
 
@@ -162,7 +205,7 @@ const onSubmit = async () => {
     // 使用 userStore 保存用户状态
     userStore.setUserData({
       id: res.id,
-      name: res.name || res.firstName, // 兼容不同的字段名
+      name: res.name || res.firstName,
       token: res.token,
     });
 
@@ -174,14 +217,15 @@ const onSubmit = async () => {
         lastName: res.lastName,
       }),
     );
+
     // 获取用户信息
     const userInfo = await getUserInfoApi();
     console.log("用户信息:", userInfo);
-    router.push("/home"); // 假设你的主页是 /home
+    message.success("登录成功！");
+    router.push("/home");
   } catch (error: any) {
-    // 错误已经在 axios 拦截器里打印了，这里可以做一些额外的 UI 交互
     console.error("登录失败:", error);
-    alert(error.message || "登录失败，请检查账号密码");
+    message.error(error.message || "登录失败，请检查账号密码");
   } finally {
     isLoading.value = false;
   }
@@ -197,10 +241,10 @@ const onSubmit = async () => {
   left: 0;
   margin: 0;
   padding: 0;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 }
 
 .background-wrapper {
@@ -209,186 +253,128 @@ const onSubmit = async () => {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 1;
+  z-index: 0;
 }
 
 .login-wrapper {
   position: relative;
-  z-index: 10;
-  perspective: 1000px;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .login-card {
-  width: 380px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  padding: 40px;
+  padding: 48px;
+  width: 420px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
   transform-style: preserve-3d;
   will-change: transform;
 }
 
 .card-content {
-  transform: translateZ(30px);
+  transform: translateZ(20px);
 }
 
 .title {
-  margin: 0;
   font-size: 36px;
   font-weight: 700;
-  color: #fff;
   text-align: center;
-  letter-spacing: 2px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, #36a8c4 0%, #2b8aa3 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .subtitle {
-  margin: 10px 0 30px;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
   text-align: center;
+  color: #666;
+  margin-bottom: 32px;
+  font-size: 14px;
 }
 
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
+.form-item {
+  margin-bottom: 4px;
 }
 
-.input-group {
-  position: relative;
-  width: 100%;
+.form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+  text-align: left;
 }
 
-.input-group input {
-  width: 100%;
-  padding: 16px 16px 16px 45px;
-  font-size: 15px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  outline: none;
-  transition: all 0.3s ease;
-  box-sizing: border-box;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.input-group input:focus {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1),
-    inset 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.input-group label {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  left: 45px;
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.6);
-  pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0 4px;
-}
-
-.input-group input:focus ~ label,
-.input-group input:valid ~ label {
-  top: 0;
-  left: 15px;
+.error-text {
+  color: #ed6f6f;
   font-size: 12px;
-  color: #fff;
-  background: rgba(181, 160, 237, 0.9);
-  border-radius: 4px;
-  backdrop-filter: blur(4px);
-}
-
-/* 图标占位 */
-.input-icon {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 18px;
-  transition: color 0.3s ease;
-}
-
-.input-group input:focus ~ .input-icon {
-  color: #fff;
+  margin-top: 4px;
+  text-align: left;
 }
 
 .options {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.remember {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.remember input {
-  cursor: pointer;
 }
 
 .forgot {
-  color: #fff;
+  color: #36a8c4;
   text-decoration: none;
-  transition: opacity 0.3s;
+  font-size: 14px;
+  transition: color 0.3s ease;
 }
 
 .forgot:hover {
-  opacity: 0.8;
-}
-
-.submit-btn {
-  margin-top: 10px;
-  padding: 14px;
-  border: none;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #333;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.submit-btn:hover {
-  background: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-}
-
-.submit-btn:active {
-  transform: translateY(0);
+  color: #2b8aa3;
+  text-decoration: underline;
 }
 
 .register-link {
-  margin-top: 25px;
   text-align: center;
+  margin-top: 24px;
+  color: #666;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
 }
 
 .register-link a {
-  color: #fff;
-  font-weight: 600;
+  color: #36a8c4;
   text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
 }
 
 .register-link a:hover {
+  color: #2b8aa3;
   text-decoration: underline;
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .login-card {
+    width: 90%;
+    padding: 32px 24px;
+  }
+
+  .title {
+    font-size: 28px;
+  }
+}
+
+/* 按钮样式 */
+:deep(.n-button--primary-type) {
+  background: linear-gradient(135deg, #36a8c4 0%, #2b8aa3 100%);
+  border: none;
+}
+
+:deep(.n-button--primary-type:hover) {
+  background: linear-gradient(135deg, #2b8aa3 0%, #36a8c4 100%);
 }
 </style>
