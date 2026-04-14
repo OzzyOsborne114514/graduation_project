@@ -65,3 +65,7 @@ export interface RegisterParams {
 export const registerApi = (data: RegisterParams) => {
   return http.post<UserInfo>('/user/register', data);
 }
+
+export const logoutApi = () => {
+  return http.post('/user/logout');
+}

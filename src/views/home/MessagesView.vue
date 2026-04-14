@@ -134,9 +134,7 @@
           />
           <div class="detail-title">
             <h3>{{ selectedApplyMsg.title }}</h3>
-            <span class="detail-time">{{
-              formatTime(selectedApplyMsg.createTime)
-            }}</span>
+            <span class="detail-time">{{ selectedApplyMsg.createTime }}</span>
           </div>
         </div>
         <n-divider />
@@ -179,7 +177,7 @@
           <!-- 待我审核的申请显示操作按钮 -->
           <div
             v-if="
-              selectedApplyMsg.applyStatus === '0' &&
+              selectedApplyMsg.applyStatus == '0' &&
               selectedApplyMsg.type === 'checkApply'
             "
             class="action-buttons"
@@ -228,6 +226,7 @@ import {
 import {
   getMyApplyJoinGroupApi,
   getAllApplyJoinGroupApi,
+  checkApplyJoinGroupApi,
 } from "@/api/group/group";
 
 const message = useMessage();
@@ -331,7 +330,7 @@ const fetchApplyMessages = async () => {
       content: `${item.applicantName} 申请加入 "${item.groupName}"`,
       applyStatus: item.applyStatus,
       isRead: item.applyStatus != "0",
-      createTime: item.createTime,
+      createTime: item.applyTime,
       avatar: item.applicantPhoto,
       applicantName: item.applicantName,
       applicantId: item.applicantId,
@@ -368,6 +367,8 @@ const selectSystemMessage = (msg: any) => {
 // 选择入群申请
 const selectApplyMessage = (msg: any) => {
   selectedApplyMsg.value = msg;
+  console.log(msg);
+
   if (!msg.isRead) {
     msg.isRead = true;
     unreadApplyCount.value = Math.max(0, unreadApplyCount.value - 1);
@@ -378,8 +379,8 @@ const selectApplyMessage = (msg: any) => {
 const handleApprove = async () => {
   if (!selectedApplyMsg.value) return;
   try {
-    // TODO: 调用同意申请 API
-    console.log("同意申请:", selectedApplyMsg.value);
+    const applyId = selectedApplyMsg.value.id.replace("check-", "");
+    await checkApplyJoinGroupApi(applyId, "1");
     message.success("已同意申请");
     selectedApplyMsg.value.applyStatus = "1";
     fetchApplyMessages();
@@ -392,8 +393,8 @@ const handleApprove = async () => {
 const handleReject = async () => {
   if (!selectedApplyMsg.value) return;
   try {
-    // TODO: 调用拒绝申请 API
-    console.log("拒绝申请:", selectedApplyMsg.value);
+    const applyId = selectedApplyMsg.value.id.replace("check-", "");
+    await checkApplyJoinGroupApi(applyId, "2");
     message.success("已拒绝申请");
     selectedApplyMsg.value.applyStatus = "2";
     fetchApplyMessages();

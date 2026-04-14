@@ -163,8 +163,6 @@ const onMouseLeave = () => {
 const validateTelephone = () => {
   if (!form.telephone) {
     errors.telephone = "请输入手机号";
-  } else if (!/^1[3-9]\d{9}$/.test(form.telephone)) {
-    errors.telephone = "请输入正确的手机号";
   } else {
     errors.telephone = "";
   }

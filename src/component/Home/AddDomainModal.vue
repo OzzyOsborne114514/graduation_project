@@ -2,43 +2,11 @@
   <div class="modal-overlay" v-if="modelValue" @click.self="closeModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>创建或加入领域</h3>
+        <h3>创建领域</h3>
         <button class="close-btn" @click="closeModal">✕</button>
       </div>
 
-      <div class="modal-body">
-        <!-- 创建域选项 -->
-        <div class="action-card" @click="handleCreateDomain">
-          <div class="icon-circle create-icon">
-            <i class="icon-plus-blue"></i>
-          </div>
-          <div class="action-info">
-            <h4>创建</h4>
-            <p>自己创建一个领域并邀请玩伴加入</p>
-          </div>
-        </div>
-
-        <!-- 加入域选项 -->
-        <div class="action-card join-card">
-          <div class="icon-circle join-icon">
-            <i class="icon-people-blue"></i>
-          </div>
-          <div class="action-info">
-            <h4>加入</h4>
-            <p>输入领域 ID/邀请链接进行搜索</p>
-          </div>
-          <div class="search-input-wrapper">
-            <input
-              type="text"
-              placeholder="请输入领域ID/邀请链接"
-              v-model="searchKeyword"
-            />
-            <button class="search-btn" @click="handleSearchDomain">
-              <i class="icon-search-gray"></i>
-            </button>
-          </div>
-        </div>
-      </div>
+      <div class="modal-body"></div>
     </div>
   </div>
 </template>
