@@ -25,11 +25,18 @@
           @keyup.enter="handleSearch"
         />
       </div>
-      <n-button type="primary" @click="handleSearch">搜索</n-button>
+      <n-button
+        type="primary"
+        color="#5b8ff9"
+        text-color="#fff"
+        @click="handleSearch"
+      >
+        搜索
+      </n-button>
     </div>
 
     <!-- 标签页 -->
-    <n-tabs v-model:value="activeTab" type="line" class="search-tabs">
+    <n-tabs v-model:value="activeTab" type="line" class="search-tabs blue-tabs">
       <n-tab-pane name="user" tab="用户">
         <div class="tab-content">
           <div v-if="loading" class="loading-state">搜索中...</div>
@@ -49,7 +56,11 @@
               class="result-item"
               @click="selectUser(user)"
             >
-              <n-avatar :size="48" :src="user.photo || defaultAvatar" round />
+              <n-avatar
+                :size="48"
+                v-authImg="user.photo.url || defaultAvatar"
+                round
+              />
               <div class="result-info">
                 <div class="result-name">
                   {{ user.firstName }}{{ user.lastName }}
@@ -63,7 +74,7 @@
         </div>
       </n-tab-pane>
 
-      <n-tab-pane name="group" tab="领域">
+      <n-tab-pane name="group" tab="群聊">
         <div class="tab-content">
           <div v-if="loading" class="loading-state">搜索中...</div>
           <div v-else-if="!hasSearched" class="empty-state">
@@ -82,7 +93,11 @@
               class="result-item"
               @click="selectGroup(group)"
             >
-              <n-avatar :size="48" :src="group.photo || defaultAvatar" round />
+              <n-avatar
+                :size="48"
+                v-authImg="group.photo.url || defaultAvatar"
+                round
+              />
               <div class="result-info">
                 <div class="result-name">{{ group.groupName }}</div>
                 <div class="result-desc">
@@ -111,7 +126,7 @@
     <div v-if="selectedGroup" class="group-detail">
       <div class="group-header">
         <n-avatar
-          :src="selectedGroup.photo || defaultAvatar"
+          v-authImg="selectedGroup.photo.url || defaultAvatar"
           :size="80"
           round
         />
@@ -228,13 +243,14 @@ const handleSearch = async () => {
   hasSearched.value = true;
 
   try {
-    // 搜索群聊（领域）
+    // 搜索群聊
     const groupRes = await getGroupListApi({
       groupName: searchKeyword.value.trim(),
       page: 1,
       pageSize: 50,
     });
-    groupResults.value = (groupRes as any[]) || [];
+    // 后端返回的是 { records: [...], total: 1 } 格式
+    groupResults.value = groupRes?.records || [];
 
     // TODO: 搜索用户接口
     userResults.value = [];
@@ -312,6 +328,19 @@ const applyToJoinGroup = async () => {
 
 .search-tabs {
   margin-top: 16px;
+}
+
+/* 蓝色 Tab 样式 */
+.blue-tabs :deep(.n-tabs-nav) {
+  --n-bar-color: #5b8ff9 !important;
+}
+
+.blue-tabs :deep(.n-tabs-tab--active) {
+  color: #5b8ff9 !important;
+}
+
+.blue-tabs :deep(.n-tabs-tab:hover) {
+  color: #5b8ff9 !important;
 }
 
 .tab-content {

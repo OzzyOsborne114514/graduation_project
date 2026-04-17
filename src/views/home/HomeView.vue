@@ -16,7 +16,16 @@
           class="nav-item"
           :class="{ active: $route.path === item.path }"
         >
-          <n-icon size="24">
+          <n-badge
+            v-if="item.path === '/home/messages' && unreadApplyCount > 0"
+            :value="unreadApplyCount"
+            :max="99"
+          >
+            <n-icon size="24">
+              <component :is="item.icon" />
+            </n-icon>
+          </n-badge>
+          <n-icon v-else size="24">
             <component :is="item.icon" />
           </n-icon>
         </router-link>
@@ -31,7 +40,7 @@
         >
           <n-avatar
             :size="50"
-            :src="userAvatar || defaultAvatar"
+            v-authImg="userAvatar"
             round
             class="user-avatar"
           />
@@ -40,7 +49,7 @@
     </aside>
 
     <!-- 中间内容区（仅在主页显示） -->
-    <aside class="channel-sidebar" v-if="isHomePage">
+    <aside class="channel-sidebar" v-if="showChannelSidebar">
       <div class="channel-header">
         <div class="search-box">
           <n-icon size="20"><Search24Regular /></n-icon>
@@ -62,8 +71,29 @@
         </n-dropdown>
       </div>
       <div class="channel-list">
-        <!-- TODO: 显示用户已加入的群聊列表 -->
-        <div class="empty-text">暂无加入的领域</div>
+        <div v-if="myGroups.length === 0" class="empty-text">
+          暂无加入的群聊
+        </div>
+        <div
+          v-else
+          v-for="group in myGroups"
+          :key="group.id"
+          class="channel-item"
+          :class="{ active: activeGroupId === group.id }"
+          @click="handleGroupClick(group)"
+        >
+          <n-avatar
+            :size="50"
+            v-authImg="group.photo?.url || defaultAvatar"
+            round
+          />
+          <div class="channel-info">
+            <div class="channel-name">{{ group.groupName }}</div>
+            <div class="channel-desc">
+              {{ "暂无消息" }}
+            </div>
+          </div>
+        </div>
       </div>
     </aside>
 
@@ -74,32 +104,55 @@
 
     <!-- 搜索弹窗组件 -->
     <SearchModal v-model="showSearchModal" />
+    <!-- 创建群聊弹窗组件 -->
+    <AddDomainModal v-model="showAddDomainModal" @success="fetchMyGroups" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h } from "vue";
+import { ref, computed, h, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { NIcon, useMessage, NButton, NAvatar, NDropdown } from "naive-ui";
+import {
+  NIcon,
+  useMessage,
+  NButton,
+  NAvatar,
+  NDropdown,
+  NBadge,
+} from "naive-ui";
 import { SignOut20Regular, Search24Regular } from "@vicons/fluent";
 import SearchModal from "@/component/Home/SearchModal.vue";
-
+import AddDomainModal from "@/component/Home/AddDomainModal.vue";
 import { logoutApi } from "@/api/user/user";
+import { getAllApplyJoinGroupApi, getMyGroupList } from "@/api/group/group";
 import defaultAvatar from "@/assets/images/默认头像.jpeg";
+import { useUserStore } from "@/store/userStore";
+const userStore = useUserStore();
 
 const route = useRoute();
 const router = useRouter();
 const message = useMessage();
 
-// 判断是否在主页
-const isHomePage = computed(() => route.path === "/home/dashboard");
+// 判断是否显示频道侧边栏
+const showChannelSidebar = computed(() => {
+  return (
+    route.path.startsWith("/home/dashboard") ||
+    route.path.startsWith("/home/chat")
+  );
+});
 
 // 主导航项
-import { Home24Regular, Chat24Regular, People24Regular } from "@vicons/fluent";
+import {
+  Home24Regular,
+  Chat24Regular,
+  People24Regular,
+  Toolbox24Regular,
+} from "@vicons/fluent";
 const mainNavItems = [
   { path: "/home", icon: Home24Regular, name: "首页" },
   { path: "/home/messages", icon: Chat24Regular, name: "消息" },
   { path: "/home/friends", icon: People24Regular, name: "好友" },
+  { path: "/home/tools", icon: Toolbox24Regular, name: "工具" },
 ];
 
 const activeServer = ref(1);
@@ -122,14 +175,14 @@ const createDropdownOptions = [
 // 处理创建下拉菜单选择
 const handleCreateDropdownSelect = (key: string) => {
   if (key === "createGroup") {
-    showSearchModal.value = true;
+    showAddDomainModal.value = true;
   } else if (key === "addFriend") {
     showSearchModal.value = true;
   }
 };
 
 // 用户相关
-const userAvatar = ref("");
+const userAvatar = ref(userStore.avatar || defaultAvatar);
 
 // 用户下拉菜单选项
 const userDropdownOptions = [
@@ -155,6 +208,66 @@ const handleUserDropdownSelect = async (key: string) => {
 
 // 搜索弹窗
 const showSearchModal = ref(false);
+// 创建群聊弹窗
+const showAddDomainModal = ref(false);
+
+// 未读消息数（待审核的入群申请）
+const unreadApplyCount = ref(0);
+
+// 我的群聊列表
+const myGroups = ref<any[]>([]);
+const activeGroupId = ref<string | null>(
+  (route.params.groupId as string) || null,
+);
+
+// 监听路由变化同步激活的群组ID
+watch(
+  () => route.params.groupId,
+  (newId) => {
+    if (newId) {
+      activeGroupId.value = newId as string;
+    } else {
+      activeGroupId.value = null;
+    }
+  },
+);
+
+// 获取我加入的群聊列表
+const fetchMyGroups = async () => {
+  try {
+    const res = await getMyGroupList();
+    myGroups.value = res || [];
+  } catch (error: any) {
+    message.error("获取群聊列表失败：" + (error.message || "未知错误"));
+  }
+};
+
+// 处理群聊项点击
+const handleGroupClick = (group: any) => {
+  activeGroupId.value = group.id;
+  router.push(`/home/chat/${group.id}`);
+};
+
+// 获取未读消息数
+const fetchUnreadApplyCount = async () => {
+  try {
+    const res = await getAllApplyJoinGroupApi();
+    // 统计状态为 0（待审核）的申请数量
+    const pendingApplies = (res || []).filter(
+      (item: any) => item.applyStatus == "0",
+    );
+    unreadApplyCount.value = pendingApplies.length;
+  } catch (error) {
+    console.error("获取未读消息数失败:", error);
+  }
+};
+
+// 组件挂载时获取数据
+onMounted(() => {
+  fetchUnreadApplyCount();
+  fetchMyGroups();
+  console.log(userAvatar.value);
+});
 </script>
 
 <style scoped>
@@ -216,6 +329,13 @@ const showSearchModal = ref(false);
   color: #1890ff;
 }
 
+/* 导航项中的徽章样式 */
+.nav-item :deep(.n-badge) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .notification-dot {
   position: absolute;
   top: -2px;
@@ -229,7 +349,7 @@ const showSearchModal = ref(false);
 
 /* 中间频道侧边栏 */
 .channel-sidebar {
-  width: 260px;
+  width: 320px;
   background-color: #fafafa;
   border-right: 1px solid #e8e8e8;
   display: flex;
@@ -312,11 +432,59 @@ const showSearchModal = ref(false);
   padding: 8px;
 }
 
-.loading-text,
+.channel-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+  gap: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-bottom: 2px;
+}
+
+.channel-item:hover {
+  background-color: #f0f0f0;
+}
+
+.channel-item.active {
+  background-color: #e6f7ff;
+}
+
+.channel-info {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-top: 2px;
+}
+
+.channel-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #1a1a1a;
+  margin-bottom: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.channel-desc {
+  font-size: 13px;
+  color: #8c8c8c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  text-align: left;
+}
+
 .empty-text {
   text-align: center;
-  padding: 20px;
   color: #999;
+  margin-top: 40px;
   font-size: 14px;
 }
 

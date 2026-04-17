@@ -3,8 +3,12 @@ import App from "./App.vue";
 import router from "./router";
 import store from "./store";
 import { createPinia } from "pinia";
+import authImg from "./utils/authImg";
 
 const pinia = createPinia();
+const app = createApp(App);
+
+app.directive('authImg', authImg);
 
 const debounce = (fn: any, delay: number) => {
   let timer: any = null;
@@ -26,4 +30,4 @@ window.ResizeObserver = class ResizeObserver extends _ResizeObserver {
   }
 };
 
-createApp(App).use(store).use(router).use(pinia).mount("#app");
+app.use(store).use(router).use(pinia).mount("#app");

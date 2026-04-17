@@ -45,7 +45,7 @@
           :class="{ unread: !msg.isRead }"
           @click="selectSystemMessage(msg)"
         >
-          <n-avatar :size="48" :src="msg.avatar || defaultAvatar" round />
+          <n-avatar :size="48" v-authImg="msg.avatar || defaultAvatar" round />
           <div class="message-content">
             <div class="message-title">
               <span class="name">{{ msg.title }}</span>
@@ -78,7 +78,7 @@
           :class="{ unread: !msg.isRead }"
           @click="selectApplyMessage(msg)"
         >
-          <n-avatar :size="48" :src="msg.avatar || defaultAvatar" round />
+          <n-avatar :size="48" v-authImg="msg.avatar || defaultAvatar" round />
           <div class="message-content">
             <div class="message-title">
               <span class="name">{{ msg.title }}</span>
@@ -129,7 +129,7 @@
         <div class="detail-header">
           <n-avatar
             :size="64"
-            :src="selectedApplyMsg.avatar || defaultAvatar"
+            v-authImg="selectedApplyMsg.avatar || defaultAvatar"
             round
           />
           <div class="detail-title">

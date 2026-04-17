@@ -4,13 +4,15 @@ export interface UserState {
   id: string | null;
   name: string;
   token: string;
+  avatar: string | null;
 }
 
 export const useUserStore = defineStore('user', {
   state: (): UserState => ({
     id: localStorage.getItem('userId') || null,
     name: localStorage.getItem('userName') || '',
-    token: localStorage.getItem('token') || ''
+    token: localStorage.getItem('token') || '',
+    avatar: localStorage.getItem('userAvatar') || null
   }),
   actions: {
     setUserData(data: Partial<UserState>) {
@@ -29,14 +31,21 @@ export const useUserStore = defineStore('user', {
         if (data.token) localStorage.setItem('token', data.token);
         else localStorage.removeItem('token');
       }
+      if (data.avatar !== undefined) {
+        this.avatar = data.avatar;
+        if (data.avatar) localStorage.setItem('userAvatar', data.avatar);
+        else localStorage.removeItem('userAvatar');
+      }
     },
     clearUserData() {
       this.id = null;
       this.name = '';
       this.token = '';
+      this.avatar = null;
       localStorage.removeItem('userId');
       localStorage.removeItem('userName');
       localStorage.removeItem('token');
+      localStorage.removeItem('userAvatar');
     }
   },
   getters: {

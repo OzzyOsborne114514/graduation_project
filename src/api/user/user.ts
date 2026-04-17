@@ -18,8 +18,7 @@ export interface LoginParams {
  */
 export interface LoginResponse {
   id: number;
-  firstName: string;
-  lastName: string;
+  name: string;
   token: string;
 }
 
@@ -38,8 +37,7 @@ export const loginApi = (data: LoginParams) => {
 
 export interface UserInfo {
   id: number;
-  firstName: string;
-  lastName: string;
+  name: string;
   telephone: string;
   photo: any;
 }

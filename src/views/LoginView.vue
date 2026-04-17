@@ -202,8 +202,8 @@ const onSubmit = async () => {
 
     // 使用 userStore 保存用户状态
     userStore.setUserData({
-      id: res.id,
-      name: res.name || res.firstName,
+      id: res.id.toString(),
+      name: res.name,
       token: res.token,
     });
 
@@ -211,13 +211,15 @@ const onSubmit = async () => {
       "userInfo",
       JSON.stringify({
         id: res.id,
-        firstName: res.firstName,
-        lastName: res.lastName,
+        name: res.name,
       }),
     );
 
     // 获取用户信息
     const userInfo = await getUserInfoApi();
+    userStore.setUserData({
+      avatar: userInfo.photo.url,
+    });
     console.log("用户信息:", userInfo);
     message.success("登录成功！");
     router.push("/home");

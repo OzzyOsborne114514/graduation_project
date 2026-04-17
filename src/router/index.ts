@@ -36,6 +36,16 @@ const routes: Array<RouteRecordRaw> = [
         name: "friends",
         component: () => import("../views/home/FriendsView.vue"),
       },
+      {
+        path:"tools",
+        name:"tools",
+        component: () => import("../views/home/ToolsView.vue"),
+      },
+      {
+        path: "chat/:groupId",
+        name: "chat",
+        component: () => import("../views/home/ChatView.vue"),
+      }
     ],
   },
 ];
