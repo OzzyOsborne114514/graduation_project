@@ -67,3 +67,11 @@ export const registerApi = (data: RegisterParams) => {
 export const logoutApi = () => {
   return http.post('/user/logout');
 }
+
+/**
+ * 搜索用户接口
+ * @param keyword 搜索关键词（昵称或手机号）
+ */
+export const searchUserApi = (keyword: string) => {
+  return http.get<UserInfo[]>('/user/search', { params: { keyword } });
+}

@@ -155,7 +155,7 @@ const toolsList: Tool[] = [
     children: [
       { key: "flowchart", name: "流程图", icon: Organization24Regular },
       { key: "timeline", name: "时间轴", icon: Timeline24Regular },
-      { key: "er-diagram", name: "ERD图", icon: Table24Regular },
+      // { key: "er-diagram", name: "ERD图", icon: Table24Regular },
       { key: "mindmap", name: "思维导图", icon: BrainCircuit24Regular },
     ],
   },

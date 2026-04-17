@@ -11,47 +11,72 @@
         <span class="group-name">{{ groupDetail.groupName }}</span>
       </div>
       <div class="chat-actions">
+        <n-icon size="24" @click="showMembers = !showMembers">
+          <People24Regular />
+        </n-icon>
         <n-icon size="24"><MoreHorizontal24Regular /></n-icon>
       </div>
     </header>
 
-    <!-- 消息列表区 -->
-    <div class="message-container" ref="messageContainer">
-      <div v-if="loading" class="loading-state">
-        <n-spin size="medium" />
-      </div>
-      <template v-else>
-        <div
-          v-for="(msg, index) in messages"
-          :key="msg.id || index"
-          class="message-item"
-          :class="{ 'message-mine': msg.senderId === userStore.id }"
-        >
-          <n-avatar
-            v-if="msg.senderId !== userStore.id"
-            :size="36"
-            v-authImg="msg.photo?.url || defaultAvatar"
-            round
-            class="sender-avatar"
-          />
-          <div class="message-content-wrapper">
-            <div v-if="msg.senderId !== userStore.id" class="sender-name">
-              {{ msg.senderName }}
-            </div>
-            <div class="message-bubble">
-              {{ msg.content }}
-            </div>
-            <div class="message-time">{{ formatTime(msg.sendTime) }}</div>
-          </div>
-          <n-avatar
-            v-if="msg.senderId === userStore.id"
-            :size="36"
-            v-authImg="userStore.avatar || defaultAvatar"
-            round
-            class="sender-avatar"
-          />
+    <div class="chat-main-container">
+      <!-- 消息列表区 -->
+      <div class="message-container" ref="messageContainer">
+        <div v-if="loading" class="loading-state">
+          <n-spin size="medium" />
         </div>
-      </template>
+        <template v-else>
+          <div
+            v-for="(msg, index) in messages"
+            :key="msg.id || index"
+            class="message-item"
+            :class="{ 'message-mine': msg.senderId === userStore.id }"
+          >
+            <n-avatar
+              v-if="msg.senderId !== userStore.id"
+              :size="36"
+              v-authImg="msg.photo?.url || defaultAvatar"
+              round
+              class="sender-avatar"
+            />
+            <div class="message-content-wrapper">
+              <div v-if="msg.senderId !== userStore.id" class="sender-name">
+                {{ msg.senderName }}
+              </div>
+              <div class="message-bubble">
+                {{ msg.content }}
+              </div>
+              <div class="message-time">{{ formatTime(msg.sendTime) }}</div>
+            </div>
+            <n-avatar
+              v-if="msg.senderId === userStore.id"
+              :size="36"
+              v-authImg="userStore.avatar || defaultAvatar"
+              round
+              class="sender-avatar"
+            />
+          </div>
+        </template>
+      </div>
+
+      <!-- 群成员侧边栏 -->
+      <aside class="members-sidebar" v-if="showMembers">
+        <div class="members-header">群成员 ({{ members.length }})</div>
+        <div class="members-list">
+          <div v-for="member in members" :key="member.id" class="member-item">
+            <n-avatar
+              :size="32"
+              v-authImg="member.photo?.url || defaultAvatar"
+              round
+            />
+            <span class="member-name">{{ member.name }}</span>
+            <span
+              :style="{ color: member.onlineStatus == 1 ? 'green' : 'red' }"
+              class="member-status"
+              >{{ member.onlineStatus == 1 ? "在线" : "离线" }}</span
+            >
+          </div>
+        </div>
+      </aside>
     </div>
 
     <!-- 输入区 -->
@@ -82,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from "vue";
+import { ref, onMounted, watch, nextTick, computed } from "vue";
 import { useRoute } from "vue-router";
 import { NAvatar, NIcon, NInput, NButton, NSpin, useMessage } from "naive-ui";
 import {
@@ -90,26 +115,44 @@ import {
   Emoji24Regular,
   Attach24Regular,
   Image24Regular,
+  People24Regular,
 } from "@vicons/fluent";
 import {
   getHistoryMessage,
-  enterGroupApi,
   sendMessage,
+  getMembersInfo,
 } from "@/api/group/group";
 import { useUserStore } from "@/store/userStore";
+import { useChatStore } from "@/store/chatStore";
 import defaultAvatar from "@/assets/images/默认头像.jpeg";
 import socketService from "@/utils/socket";
 
 const route = useRoute();
 const userStore = useUserStore();
+const chatStore = useChatStore();
 const message = useMessage();
 const messageContainer = ref<HTMLElement | null>(null);
 
 const groupId = ref(route.params.groupId as string);
-const groupDetail = ref<any>(null);
+const groupDetail = computed(() => chatStore.currentGroupDetail);
 const messages = ref<any[]>([]);
 const loading = ref(false);
 const inputText = ref("");
+
+// 群成员相关
+const showMembers = ref(false);
+const members = ref<any[]>([]);
+
+// 获取群成员
+const fetchMembers = async () => {
+  if (!groupId.value) return;
+  try {
+    const res = await getMembersInfo(groupId.value);
+    members.value = res || [];
+  } catch (error) {
+    console.error("获取群成员失败:", error);
+  }
+};
 
 // 获取历史消息
 const fetchMessages = async () => {
@@ -123,16 +166,6 @@ const fetchMessages = async () => {
     message.error("获取消息失败：" + (error.message || "未知错误"));
   } finally {
     loading.value = false;
-  }
-};
-
-// 进入群聊
-const enterGroup = async () => {
-  try {
-    const res = await enterGroupApi(groupId.value);
-    groupDetail.value = res;
-  } catch (error) {
-    console.error("进入群聊失败:", error);
   }
 };
 
@@ -162,8 +195,8 @@ const handleSendMessage = async () => {
 };
 
 onMounted(() => {
-  enterGroup();
   fetchMessages();
+  fetchMembers();
 
   // 连接 WebSocket 并监听消息
   if (userStore.token) {
@@ -198,7 +231,6 @@ const formatTime = (timeStr: string) => {
 };
 
 onMounted(() => {
-  enterGroup();
   fetchMessages();
 });
 
@@ -207,8 +239,8 @@ watch(
   (newId) => {
     if (newId) {
       groupId.value = newId as string;
-      enterGroup();
       fetchMessages();
+      fetchMembers();
     }
   },
 );
@@ -244,8 +276,20 @@ watch(
 }
 
 .chat-actions {
+  display: flex;
+  gap: 16px;
   color: #666;
   cursor: pointer;
+}
+
+.chat-actions .n-icon:hover {
+  color: #1890ff;
+}
+
+.chat-main-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
 }
 
 .message-container {
@@ -256,6 +300,54 @@ watch(
   flex-direction: column;
   gap: 20px;
   background-color: #f5f7fa;
+}
+
+/* 群成员侧边栏 */
+.members-sidebar {
+  width: 240px;
+  background-color: #fff;
+  border-left: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.members-header {
+  padding: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.members-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.member-item:hover {
+  background-color: #f5f5f5;
+}
+
+.member-name {
+  font-size: 14px;
+  color: #333;
+}
+
+.member-status {
+  font-size: 12px;
+  color: #999;
+  display: block;
 }
 
 .loading-state {

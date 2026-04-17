@@ -127,7 +127,9 @@ import { logoutApi } from "@/api/user/user";
 import { getAllApplyJoinGroupApi, getMyGroupList } from "@/api/group/group";
 import defaultAvatar from "@/assets/images/默认头像.jpeg";
 import { useUserStore } from "@/store/userStore";
+import { useChatStore } from "@/store/chatStore";
 const userStore = useUserStore();
+const chatStore = useChatStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -237,6 +239,12 @@ const fetchMyGroups = async () => {
   try {
     const res = await getMyGroupList();
     myGroups.value = res || [];
+
+    // 如果当前已经在聊天页，且 store 中没数据，尝试从列表中同步
+    if (route.params.groupId && !chatStore.currentGroupDetail) {
+      const current = myGroups.value.find((g) => g.id == route.params.groupId);
+      if (current) chatStore.setCurrentGroupDetail(current);
+    }
   } catch (error: any) {
     message.error("获取群聊列表失败：" + (error.message || "未知错误"));
   }
@@ -245,6 +253,7 @@ const fetchMyGroups = async () => {
 // 处理群聊项点击
 const handleGroupClick = (group: any) => {
   activeGroupId.value = group.id;
+  chatStore.setCurrentGroupDetail(group);
   router.push(`/home/chat/${group.id}`);
 };
 
@@ -456,7 +465,7 @@ onMounted(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding-top: 2px;
+  padding-top: 10px;
 }
 
 .channel-name {

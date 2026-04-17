@@ -228,9 +228,12 @@ import {
   getAllApplyJoinGroupApi,
   checkApplyJoinGroupApi,
 } from "@/api/group/group";
-
-const message = useMessage();
 import defaultAvatar from "@/assets/images/默认头像.jpeg";
+import socketService from "@/utils/socket";
+import { useUserStore } from "@/store/userStore";
+
+const userStore = useUserStore();
+const message = useMessage();
 
 // 当前激活的标签页
 const activeTab = ref<"system" | "apply">("system");
@@ -275,14 +278,45 @@ const formatTime = (time: string | number) => {
   });
 };
 
+// 处理 WebSocket 消息
+const onSocketMessage = (data: any) => {
+  // 如果收到的是入群申请相关的消息（根据业务逻辑判断消息类型）
+  // 假设后端推送的消息包含 type 或特定字段来区分
+  if (
+    data.type === "APPLY_NOTIFICATION" ||
+    data.type === "AUDIT_NOTIFICATION"
+  ) {
+    fetchApplyMessages(); // 重新拉取列表以获取最新状态
+    message.info("收到新的申请通知");
+  }
+};
+
 // 获取系统消息（真正的系统通知）
 const fetchSystemMessages = async () => {
   loading.value = true;
   try {
-    // TODO: 调用获取系统消息 API
-    // 暂时为空，等待后端提供真正的系统消息接口
-    systemMessages.value = [];
-    unreadSystemCount.value = 0;
+    // 模拟系统消息数据
+    systemMessages.value = [
+      {
+        id: "sys-1",
+        title: "欢迎加入 Oopz",
+        content: "欢迎来到 Oopz 协作平台！您可以创建群聊、邀请好友、共同绘图。",
+        createTime: new Date("2026-04-15 10:00").toISOString(),
+        isRead: true,
+        avatar: "",
+      },
+      {
+        id: "sys-2",
+        title: "版本更新通知",
+        content: "系统已更新至 v1.2.0，修复了 ERD 绘图工具的显示问题。",
+        createTime: new Date("2026-04-16 14:30").toISOString(),
+        isRead: false,
+        avatar: "",
+      },
+    ];
+    unreadSystemCount.value = systemMessages.value.filter(
+      (m) => !m.isRead,
+    ).length;
   } catch (error: any) {
     console.error("获取系统消息失败:", error);
     message.error("获取系统消息失败");
@@ -407,6 +441,18 @@ const handleReject = async () => {
 onMounted(() => {
   fetchSystemMessages();
   fetchApplyMessages();
+
+  // 监听 WebSocket
+  if (userStore.token) {
+    socketService.connect(userStore.token);
+    socketService.on("message", onSocketMessage);
+  }
+});
+
+// 卸载
+import { onUnmounted } from "vue";
+onUnmounted(() => {
+  socketService.off("message", onSocketMessage);
 });
 </script>
 

@@ -186,6 +186,7 @@ import {
 } from "naive-ui";
 import { Search24Regular } from "@vicons/fluent";
 import { getGroupListApi, applyJoinGroupApi } from "@/api/group/group";
+import { searchUserApi } from "@/api/user/user";
 import defaultAvatar from "@/assets/images/默认头像.jpeg";
 
 const props = defineProps<{
@@ -252,8 +253,9 @@ const handleSearch = async () => {
     // 后端返回的是 { records: [...], total: 1 } 格式
     groupResults.value = groupRes?.records || [];
 
-    // TODO: 搜索用户接口
-    userResults.value = [];
+    // 搜索用户
+    const userRes = await searchUserApi(searchKeyword.value.trim());
+    userResults.value = userRes || [];
   } catch (error: any) {
     message.error("搜索失败：" + (error.message || "未知错误"));
   } finally {
