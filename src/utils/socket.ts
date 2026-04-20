@@ -1,118 +1,158 @@
+import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+
 type MessageCallback = (data: any) => void;
 
 class SocketService {
-  private socket: WebSocket | null = null;
+  private client: Client | null = null;
   private url: string;
+  private subscriptions: Map<string, StompSubscription> = new Map();
   private callbacks: Map<string, MessageCallback[]> = new Map();
-  private reconnectTimer: number | null = null;
-  private maxReconnectAttempts = 5;
-  private reconnectAttempts = 0;
+  private isConnected = false;
 
   constructor(url: string) {
-    this.url = url;
+    // 如果是 ws:// 开头，且准备使用 SockJS，建议换成 http:// 或 https://
+    this.url = url.replace(/^ws/, 'http');
   }
 
   /**
-   * 连接 WebSocket
+   * 连接 WebSocket (STOMP over SockJS)
    */
   connect(token: string) {
-    if (this.socket?.readyState === WebSocket.OPEN) return;
+    if (this.client?.active) return;
 
-    // 后端 WebSocket 地址，带上 token 鉴权
-    const fullUrl = `${this.url}?token=${token}`;
-    this.socket = new WebSocket(fullUrl);
+    const socketUrl = this.url.includes('?') 
+      ? `${this.url}&token=${token}` 
+      : `${this.url}?token=${token}`;
 
-    this.socket.onopen = () => {
-      console.log('WebSocket Connected');
-      this.reconnectAttempts = 0;
-      if (this.reconnectTimer) {
-        clearInterval(this.reconnectTimer);
-        this.reconnectTimer = null;
-      }
+    this.client = new Client({
+      // 使用 webSocketFactory 来集成 SockJS
+      webSocketFactory: () => new SockJS(socketUrl),
+      connectHeaders: {
+        token: token,
+      },
+      debug: (str) => {
+        console.log('STOMP Debug:', str);
+      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+    });
+
+    // 如果 brokerURL 是 ws:// 开头的，直接连接
+    // 如果需要支持 SockJS，可以设置 webSocketFactory
+
+    this.client.onConnect = (frame) => {
+      console.log('STOMP Connected:', frame);
+      this.isConnected = true;
+      // 重新订阅之前的目的地
+      this.reSubscribeAll();
     };
 
-    this.socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        // 根据消息类型触发回调，这里假设后端消息体有 type 字段，或者统一处理
-        this.emit('message', data);
-      } catch (e) {
-        console.error('WebSocket parse error:', e);
-      }
+    this.client.onStompError = (frame) => {
+      console.error('STOMP Error:', frame.headers['message']);
+      console.error('STOMP Details:', frame.body);
     };
 
-    this.socket.onclose = () => {
-      console.log('WebSocket Closed');
-      this.reconnect();
+    this.client.onWebSocketClose = () => {
+      console.log('STOMP WebSocket Closed');
+      this.isConnected = false;
     };
 
-    this.socket.onerror = (error) => {
-      console.error('WebSocket Error:', error);
-    };
+    this.client.activate();
   }
 
   /**
-   * 重连机制
+   * 订阅目的地
    */
-  private reconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('WebSocket max reconnect attempts reached');
-      return;
+  subscribe(destination: string, callback: MessageCallback) {
+    // 记录回调
+    if (!this.callbacks.has(destination)) {
+      this.callbacks.set(destination, []);
     }
+    this.callbacks.get(destination)?.push(callback);
 
-    if (this.reconnectTimer) return;
+    // 如果已连接，立即订阅
+    if (this.isConnected && this.client) {
+      this.doSubscribe(destination);
+    }
+  }
 
-    this.reconnectTimer = window.setTimeout(() => {
-      this.reconnectAttempts++;
-      const token = localStorage.getItem('token');
-      if (token) {
-        this.connect(token);
+  /**
+   * 内部执行订阅
+   */
+  private doSubscribe(destination: string) {
+    if (!this.client || this.subscriptions.has(destination)) return;
+
+    const sub = this.client.subscribe(destination, (message: IMessage) => {
+      try {
+        // 解决大数字精度丢失问题：在解析 JSON 前，将大数字（16位以上）替换为字符串
+        const rawBody = message.body;
+        const normalizedBody = rawBody.replace(/([^\\]":\s*)(\d{16,})/g, '$1"$2"');
+        const data = JSON.parse(normalizedBody);
+        
+        const callbacks = this.callbacks.get(destination);
+        if (callbacks) {
+          callbacks.forEach(cb => cb(data));
+        }
+      } catch (e) {
+        console.error(`Error parsing message from ${destination}:`, e);
       }
-      this.reconnectTimer = null;
-    }, 3000);
+    });
+
+    this.subscriptions.set(destination, sub);
+  }
+
+  /**
+   * 重新订阅所有已注册的目的地
+   */
+  private reSubscribeAll() {
+    this.callbacks.forEach((_, destination) => {
+      this.doSubscribe(destination);
+    });
+  }
+
+  /**
+   * 取消订阅
+   */
+  unsubscribe(destination: string, callback?: MessageCallback) {
+    if (callback) {
+      const list = this.callbacks.get(destination);
+      if (list) {
+        const index = list.indexOf(callback);
+        if (index > -1) {
+          list.splice(index, 1);
+        }
+        if (list.length === 0) {
+          this.callbacks.delete(destination);
+          this.realUnsubscribe(destination);
+        }
+      }
+    } else {
+      this.callbacks.delete(destination);
+      this.realUnsubscribe(destination);
+    }
+  }
+
+  private realUnsubscribe(destination: string) {
+    const sub = this.subscriptions.get(destination);
+    if (sub) {
+      sub.unsubscribe();
+      this.subscriptions.delete(destination);
+    }
   }
 
   /**
    * 发送消息
    */
-  send(data: any) {
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify(data));
+  send(destination: string, body: any) {
+    if (this.client?.connected) {
+      this.client.publish({
+        destination,
+        body: JSON.stringify(body),
+      });
     } else {
-      console.error('WebSocket is not open');
-    }
-  }
-
-  /**
-   * 监听消息
-   */
-  on(event: string, callback: MessageCallback) {
-    if (!this.callbacks.has(event)) {
-      this.callbacks.set(event, []);
-    }
-    this.callbacks.get(event)?.push(callback);
-  }
-
-  /**
-   * 移除监听
-   */
-  off(event: string, callback: MessageCallback) {
-    const list = this.callbacks.get(event);
-    if (list) {
-      const index = list.indexOf(callback);
-      if (index > -1) {
-        list.splice(index, 1);
-      }
-    }
-  }
-
-  /**
-   * 触发事件
-   */
-  private emit(event: string, data: any) {
-    const list = this.callbacks.get(event);
-    if (list) {
-      list.forEach(cb => cb(data));
+      console.error('STOMP is not connected');
     }
   }
 
@@ -120,17 +160,25 @@ class SocketService {
    * 关闭连接
    */
   disconnect() {
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
+    if (this.client) {
+      this.client.deactivate();
+      this.client = null;
+      this.isConnected = false;
+      this.subscriptions.clear();
+      this.callbacks.clear();
     }
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
+  }
+
+  // 兼容旧代码的 emit/on 方法，但建议使用 subscribe
+  on(destination: string, callback: MessageCallback) {
+    this.subscribe(destination, callback);
+  }
+
+  off(destination: string, callback: MessageCallback) {
+    this.unsubscribe(destination, callback);
   }
 }
 
-// 单例模式导出，端口根据用户描述设为 8081
-const socketService = new SocketService('ws://localhost:8081/ws');
+// 单例模式导出
+const socketService = new SocketService('http://localhost:8081/ws');
 export default socketService;

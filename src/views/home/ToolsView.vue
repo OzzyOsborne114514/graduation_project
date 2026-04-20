@@ -76,6 +76,11 @@
           <Flowchart />
         </div>
 
+        <!-- 白板 -->
+        <div v-else-if="activeTool === 'whiteBoard'" class="tool-panel">
+          <WhiteBoard />
+        </div>
+
         <!-- 时间轴 -->
         <div v-else-if="activeTool === 'timeline'" class="tool-panel">
           <Timeline />
@@ -119,12 +124,14 @@ import {
   Timeline24Regular,
   Table24Regular,
   BrainCircuit24Regular,
+  Whiteboard24Regular,
 } from "@vicons/fluent";
 import MilkDown from "@/component/Tools/MilkDown.vue";
 import Flowchart from "@/component/Tools/Flowchart.vue";
 import Timeline from "@/component/Tools/Timeline.vue";
 import ERDiagram from "@/component/Tools/ERDiagram.vue";
 import MindMap from "@/component/Tools/MindMap.vue";
+import WhiteBoard from "@/component/Tools/WhiteBorad.vue";
 
 // 子工具类型
 interface SubTool {
@@ -153,6 +160,7 @@ const toolsList: Tool[] = [
     name: "绘图专区",
     icon: Flowchart24Regular,
     children: [
+      { key: "whiteBoard", name: "白板", icon: Whiteboard24Regular },
       { key: "flowchart", name: "流程图", icon: Organization24Regular },
       { key: "timeline", name: "时间轴", icon: Timeline24Regular },
       // { key: "er-diagram", name: "ERD图", icon: Table24Regular },

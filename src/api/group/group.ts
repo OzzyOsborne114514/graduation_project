@@ -82,6 +82,22 @@ export const getMyGroupList = () => {
 
 
 //发送群消息
-export const sendMessage = (groupId:string,content:string,file?:object) => {
-  return http.post('/group/sendGroupMessage', null,{params:{groupId,content,file}});
-}
+export const sendMessage = (groupId: string, content: string, file?: File) => {
+  const formData = new FormData();
+  if (file) {
+    formData.append("file", file);
+  }
+  return http.post("/group/sendGroupMessage", formData, {
+    params: { groupId, content },
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+};
+
+// 撤回群消息
+export const withdrawMessage = (msgId: string) => {
+  return http.post("/group/message/recall",null, {
+    params: { msgId },
+  });
+};

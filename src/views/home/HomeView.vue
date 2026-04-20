@@ -90,7 +90,7 @@
           <div class="channel-info">
             <div class="channel-name">{{ group.groupName }}</div>
             <div class="channel-desc">
-              {{ "暂无消息" }}
+              {{ group.content }}
             </div>
           </div>
         </div>

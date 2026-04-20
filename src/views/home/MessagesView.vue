@@ -280,15 +280,9 @@ const formatTime = (time: string | number) => {
 
 // 处理 WebSocket 消息
 const onSocketMessage = (data: any) => {
-  // 如果收到的是入群申请相关的消息（根据业务逻辑判断消息类型）
-  // 假设后端推送的消息包含 type 或特定字段来区分
-  if (
-    data.type === "APPLY_NOTIFICATION" ||
-    data.type === "AUDIT_NOTIFICATION"
-  ) {
-    fetchApplyMessages(); // 重新拉取列表以获取最新状态
-    message.info("收到新的申请通知");
-  }
+  console.log("收到系统消息/通知:", data);
+  fetchApplyMessages(); // 重新拉取列表以获取最新状态
+  message.info("收到新的系统通知");
 };
 
 // 获取系统消息（真正的系统通知）
@@ -445,7 +439,10 @@ onMounted(() => {
   // 监听 WebSocket
   if (userStore.token) {
     socketService.connect(userStore.token);
-    socketService.on("message", onSocketMessage);
+    // 订阅用户相关的通知
+    socketService.subscribe("/user/queue/groupApply", onSocketMessage);
+    socketService.subscribe("/user/queue/applyResult", onSocketMessage);
+    socketService.subscribe("/user/queue/groupNotify", onSocketMessage);
   }
 });
 
